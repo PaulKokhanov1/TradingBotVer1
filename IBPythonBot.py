@@ -16,13 +16,14 @@ import time
 import yfinance as yf
 import yahoo_fin.stock_info as si
 
-
+orderId = 1
 
 #class for bot logic
 class Bot(object):
-    global order_id
+    global orderId
     initialbartime = datetime.now().astimezone(pytz.timezone("America/New_York"))
     def __init__(self):
+        global orderId
         self.ib = IBApi()
         self.ib.connect("127.0.0.1", 7497, 1 ) #set for Paper Trading Account
         ib_thread = threading.Thread(target=self.run_loop, daemon=True)
@@ -34,7 +35,7 @@ class Bot(object):
         self.dataRequest = DataRequester(self.interval, self.symbol)
         self.dataRequest.register_callback(self.buyDesicion)
         
-        self.order_id = self.ib.nextValidId
+        orderId = self.ib.nextValidId
 
         #Place Order
         # self.ib.placeOrder(self.order_id, contract, order)
@@ -43,7 +44,7 @@ class Bot(object):
     #let "bar" be the current/most recent bar
     #still need to consider edge case when most recent bar in bars list is the same as live price bar
     def buyDesicion(self, old_value, new_value):
-        print("buyDesicion initiated")
+        global orderId
         self.bars = self.dataRequest.bars
         self.sma = self.dataRequest.sma
         self.currentBar = self.dataRequest.currentBar
@@ -70,6 +71,18 @@ class Bot(object):
                 print("BUY")
             else:
                 print("Don't BUY")
+            #Bracket Order 2% Profit Target 1% Stop Loss
+            profitTarget = self.currentBar.close*1.02
+            stopLoss = self.currentBar.close*0.99
+            quantity = 1
+            bracket = self.bracketOrder(orderId,"BUY",quantity, profitTarget, stopLoss)
+            contract = self.contract_object()
+            #Place Bracket Order
+            for o in bracket:
+                o.ocaGroup = "OCA_"+str(orderId)
+                self.ib.placeOrder(o.orderId,contract,o)
+            orderId += 3
+            
 
     
     def run_loop(self):

@@ -11,6 +11,6 @@ class IBApi(EWrapper, EClient):
     def nextValidId(self, orderId):
         self.nextValidId = orderId
 
-    # def error(self, id, errorCode, errorMsg):
+    # def error(self, id, errorCode, errorMsg,advancedOrderRejectJson = ""):
     #     print(errorCode)
     #     print(errorMsg)

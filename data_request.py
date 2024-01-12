@@ -28,27 +28,27 @@ class DataRequester(object):
     
     @update.setter
     def update(self, new_value):
-        print("setter called")
+        #print("setter called")
         old_value = self._update
         self._update = new_value
         self.notify_observers(old_value, new_value)
 
     def notify_observers(self, old_value, new_value):
-        print("notifying users")
+        #print("notifying users")
         for callback in self._callbacks:
             callback(old_value, new_value)
 
     def register_callback(self, callback):
-        print("bound")
+        #print("bound")
         self._callbacks.append(callback)
 
     
     #dont need to do this because just need to request historical data once and then later just keep appending most recent bar
     def run_updates(self):
-        self.t = threading.Timer(10.0, self.run_updates)
+        self.t = threading.Timer(10.0, self.run_updates)    #when running the bot for real, set timer to about 60s (so 1 min)
         self.t.start()
         self.updateHistoricalBars()
-        self.cancel_updates()
+        #self.cancel_updates()
         self.count += 1
     
     def cancel_updates(self):
@@ -69,8 +69,9 @@ class DataRequester(object):
 
         ticker = yf.Ticker(self.symbol)
         data = ticker.history(interval=self.interval, start=startTime)
-        print(data["Close"])
+        #print(data["Close"])
         #need to keep index var since pandas dataframe doesn't have indexing in this case
+        
         index = 0
         for dateTime, row in data.iterrows():
             self.bars.append(Bar())
@@ -84,7 +85,8 @@ class DataRequester(object):
         
         for bar in self.bars: print(" Open: " + str(bar.open) + " Close: " + str(bar.close) + " high: " + str(bar.high) + " low: " + str(bar.low) + " Volume: " + str(bar.volume) + " Date: " + str(bar.date)  )
         self.currentBar.close = si.get_live_price(self.symbol)
-        print(self.currentBar.close)
+        print("Size of bar: ", len(self.bars))
+        #print(self.currentBar.close)
         self.calcSMA()
         time.sleep(1)
         self.run_updates()
@@ -101,21 +103,31 @@ class DataRequester(object):
 
         ticker = yf.Ticker(self.symbol)
         data = ticker.history(interval=self.interval, start=startTime)
-        print(data["Close"])
+        #print(data["Close"])
         #need to keep index var since pandas dataframe doesn't have indexing in this case
         index = 0
+        #WEIRD PROBLEM WITH INDEX BEING OUT OF RANGE SOMETIMES
         for dateTime, row in data.iterrows():
+            if index >= len(self.bars):
+                self.bars.append(Bar())
             self.bars[index].open = round(row['Open'], 2)
             self.bars[index].low = round(row['Low'], 2)
             self.bars[index].high = round(row['High'], 2)
             self.bars[index].close = round(row['Low'], 2)
             self.bars[index].volume = row['Volume']
             self.bars[index].date = str(dateTime)[:-6]
+            
             index += 1
+
+        #edge case, but if by some means len(bars) > 50, then popleft() to remove oldest data point
+        while (len(self.bars)>50):
+            self.bars.pop(0)
+
         
         for bar in self.bars: print(" Open: " + str(bar.open) + " Close: " + str(bar.close) + " high: " + str(bar.high) + " low: " + str(bar.low) + " Volume: " + str(bar.volume) + " Date: " + str(bar.date)  )
         self.currentBar.close = si.get_live_price(self.symbol)
-        print(self.currentBar.close)
+        print("Size of bar: ", len(self.bars))
+        print("Current Price: ", self.currentBar.close)
         self.calcSMA()
 
     def calcSMA(self):
